@@ -1,9 +1,12 @@
 package main
 
 import (
-	// "scheduler"
+	"log"
+	"net/http"
 
+	"github.com/adettelle/go_final_project/handlers"
 	"github.com/adettelle/go_final_project/pkg/scheduler"
+	"github.com/go-chi/chi/v5"
 	_ "modernc.org/sqlite"
 )
 
@@ -11,24 +14,11 @@ var webDir = "./web/"
 
 func main() {
 	scheduler.DbConnection()
+	r := chi.NewRouter()
 
-	/*
-		// Get the TODO_PORT environment variable
-		port := os.Getenv("TODO_PORT")
+	r.Get("/api/nextdate", handlers.GetNextDay)
 
-		if port == "" {
-			port = "7540"
-		}
-
-		if _, err := strconv.Atoi(port); err != nil {
-			log.Fatal(err)
-		}
-
-		http.Handle("/", http.FileServer(http.Dir(webDir)))
-		err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-	*/
-
+	if err := http.ListenAndServe(":7540", r); err != nil {
+		log.Printf("Start server error: %s", err.Error())
+	}
 }

@@ -70,18 +70,16 @@ func dbCreate(dbFilePath string) {
 	}
 	defer db.Close()
 
-	// в методе Exec я отправляю базе данных строку запроса scheduler на выполнение
+	// в методе Exec базе данных отправляется строка запроса scheduler на выполнение
 	_, err = db.Exec(scheduler)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-// dbConnection проверяет существование БД. Если ёё нет, создает БД.
-// как лучше назвать функцию
+// dbConnection checks DB existance and creates if it doesn't exist.
 func DbConnection() {
 	appPath, err := os.Executable()
-	// fmt.Println(appPath) // /tmp/go-build1725643628/b001/exe/main
 
 	dbFile := filepath.Join(filepath.Dir(appPath), "scheduler.db")
 
