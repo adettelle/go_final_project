@@ -136,7 +136,8 @@ func TestAddTask(t *testing.T) {
 			}
 			id := fmt.Sprint(mid)
 
-			err = db.Get(&task, `SELECT * FROM scheduler WHERE id=?`, id)
+			err = db.Get(&task, `SELECT * FROM task WHERE id=?`, id)
+			fmt.Println("task:", task)
 			assert.NoError(t, err)
 			assert.Equal(t, id, strconv.FormatInt(task.ID, 10))
 
