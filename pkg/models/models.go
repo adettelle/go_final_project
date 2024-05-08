@@ -8,16 +8,16 @@ import (
 	"github.com/adettelle/go_final_project/pkg/dateutil"
 )
 
-type TaskCreationRequest struct { // это запрос на создание таска
-	ID      uint   `json:"-"`       // как задать primary key??????
+type Task struct { // это запрос на создание таска
+	ID      uint   `json:"-"`
 	Date    string `json:"date"`    // дата задачи в формате 20060102
-	Title   string `json:"title"`   // заголовок задачи. как задать Обязательное поле??????
+	Title   string `json:"title"`   // заголовок задачи
 	Comment string `json:"comment"` // комментарий к задаче
 	Repeat  string `json:"repeat"`  // правило повторения
 }
 
 // ValidateAndNormalizeDate checks the incoming data and sets the next date of the event.
-func (t *TaskCreationRequest) ValidateAndNormalizeDate() error {
+func (t *Task) ValidateAndNormalizeDate() error {
 	if t.Title == "" {
 		err := fmt.Errorf("The title field is empty.")
 		return err

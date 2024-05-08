@@ -101,7 +101,81 @@ func NewApi(repo *repo.TasksRepository) *Api {
 	return &Api{repo: repo} // создаем ссылку на объект api со свойством repo, равным repo из параметров функции
 }
 
-// CreateTask ???????????
+func (a *Api) MyHandle(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case r.Method == http.MethodPost: // http.MethodPost - это константа
+		a.CreateTask(w, r)
+	case r.Method == http.MethodGet:
+		if r.URL.Query().Get("search") != "" {
+			s := r.URL.Query().Get("search")
+			a.SearchTasks(w, r, s)
+		} else {
+			a.GetAllTasks(w)
+		}
+	}
+}
+
+func (a *Api) GetAllTasks(w http.ResponseWriter) {
+	foundTasks, err := a.repo.GetAllTasks()
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusInternalServerError) // 500
+		return
+	}
+	//w.Write([]byte(fmt.Sprintf("%v", foundTasks)))
+
+	result := make(map[string][]models.Task) // для тестов
+	result["tasks"] = foundTasks
+
+	resp, err := json.Marshal(result)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	//fmt.Println(resp)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(resp) // Write(resp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	//w.Write([]byte(fmt.Sprintf("%v", resp)))
+}
+
+func (a *Api) SearchTasks(w http.ResponseWriter, r *http.Request, search string) {
+	// r.URL.Query().Get(search)
+	foundTasks, err := a.repo.SearchTasks(search)
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusInternalServerError) // 500
+		return
+	}
+
+	result := make(map[string][]models.Task) // для тестов
+	result["tasks"] = foundTasks
+
+	resp, err := json.Marshal(result)
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(resp) // Write(resp)
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+		// http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, errorJson, http.StatusBadRequest)
+		return
+	}
+}
+
+// CreateTask posts task into DB
 func (a *Api) CreateTask(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 
@@ -110,12 +184,12 @@ func (a *Api) CreateTask(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("err4:", err)
 		// http.Error(w, err.Error(), http.StatusBadRequest)
 		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
-		http.Error(w, errorJson, http.StatusBadRequest)
+		http.Error(w, errorJson, http.StatusBadRequest) // 400
 		return
 	}
 	fmt.Println("received:", buf.String())
 
-	var parseBody models.TaskCreationRequest
+	var parseBody models.Task
 	err = json.Unmarshal(buf.Bytes(), &parseBody)
 	if err != nil {
 		fmt.Println("err3:", err)
@@ -150,3 +224,20 @@ func (a *Api) CreateTask(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("{\"id\":%d}", id))) //
 }
+
+/*
+// Чтение строки по заданному id.
+// Из таблицы должна вернуться только одна строка.
+func (tr TasksRepository) GetTask(id int) (models.TaskCreationRequest, error) {
+	s := models.TaskCreationRequest{}
+	row := tr.db.QueryRow("SELECT id, date, title, comment, repeat from task WHERE id = :id",
+		sql.Named("id", id))
+
+	// заполняем объект TaskCreationRequest данными из таблицы
+	err := row.Scan(&s.ID, &s.Date, &s.Title, &s.Comment, &s.Repeat)
+	if err != nil {
+		return s, err
+	}
+	return s, nil
+}
+*/

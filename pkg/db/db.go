@@ -34,16 +34,16 @@ func checkFileExists(dbFile string) bool {
 }
 
 func dbCreate(dbFilePath string) {
-	// формируем строку для дальнейшего создания таблицы
+	// формируем строку для дальнейшего создания таблицы task (в тестах scheduler)
 	taskTableCreateQuery := `
-	CREATE TABLE IF NOT EXISTS task (
+	CREATE TABLE IF NOT EXISTS scheduler (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		date    VARCHAR(8) NOT NULL,
 		title   VARCHAR(128) NOT NULL,
 		comment VARCHAR(250),
 		repeat  VARCHAR(128)
 	);
-	CREATE INDEX IF NOT EXISTS task_date ON task(date);
+	CREATE INDEX IF NOT EXISTS scheduler_date ON scheduler(date);
 	`
 
 	db, err := sql.Open("sqlite", dbFilePath)
