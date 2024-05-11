@@ -9,7 +9,7 @@ import (
 )
 
 type Task struct { // это запрос на создание таска
-	ID      uint   `json:"-"`
+	ID      string `json:"id"`      // uint   `json:"id"`
 	Date    string `json:"date"`    // дата задачи в формате 20060102
 	Title   string `json:"title"`   // заголовок задачи
 	Comment string `json:"comment"` // комментарий к задаче
@@ -61,5 +61,6 @@ func (t *Task) ValidateAndNormalizeDate() error {
 	}
 
 	log.Printf("Returning t.Date in TaskCreationRequest function  %v.", t.Date)
+	fmt.Println("Error in ValidateAndNormalizeDate:", err)
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/adettelle/go_final_project/pkg/dateutil"
 	"github.com/adettelle/go_final_project/pkg/db/repo"
 	"github.com/adettelle/go_final_project/pkg/models"
+	"github.com/go-chi/chi/v5"
 )
 
 // checkRepeatRule checks if the reapeat rule starts with wright letter
@@ -76,9 +77,8 @@ func GetNextDay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("Before nextDay")
+	log.Println("Before nextDay")
 	nextDay, err := dateutil.NextDate(dtNow, date, repeat)
-	fmt.Println("Error in oops:", err)
 
 	if err != nil {
 		err := fmt.Errorf("Wrong repeat value")
@@ -101,17 +101,52 @@ func NewApi(repo *repo.TasksRepository) *Api {
 	return &Api{repo: repo} // создаем ссылку на объект api со свойством repo, равным repo из параметров функции
 }
 
-func (a *Api) MyHandle(w http.ResponseWriter, r *http.Request) {
+func (a *Api) TaskHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
-	case r.Method == http.MethodPost: // http.MethodPost - это константа
-		a.CreateTask(w, r)
 	case r.Method == http.MethodGet:
-		if r.URL.Query().Get("search") != "" {
-			s := r.URL.Query().Get("search")
-			a.SearchTasks(w, r, s)
+		idToSearch := r.URL.Query().Get("id") // это параметр запроса
+		if idToSearch != "" {
+			id, err := strconv.Atoi(idToSearch)
+			if err != nil {
+				log.Println("error", err)
+				errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+				http.Error(w, errorJson, http.StatusBadRequest)
+				return // иначе пойдем в a.GetTask(w, r, id) это стиль с гардами (защитниками). иначе надо написать else {a.GetTask(w, r, id)}
+			}
+			a.GetTask(w, r, id)
 		} else {
-			a.GetAllTasks(w)
+			errorJson := fmt.Sprintf("{\"error\":\"%s\"}", "ID should not be empty.")
+			http.Error(w, errorJson, http.StatusBadRequest)
 		}
+
+	case r.Method == http.MethodPost:
+		a.CreateTask(w, r)
+	case r.Method == http.MethodPut:
+		a.UpdateTask(w, r)
+	}
+}
+
+// http://localhost:7540/api/tasks/257
+func (a *Api) GetTaskByIdHandler(w http.ResponseWriter, r *http.Request) {
+	idToSearch := chi.URLParam(r, "id")
+	if idToSearch != "" {
+		id, err := strconv.Atoi(idToSearch)
+		if err != nil {
+			log.Println("error", err)
+			errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+			http.Error(w, errorJson, http.StatusBadRequest)
+			return // иначе пойдем в a.GetTask(w, r, id) это стиль с гардами (защитниками). иначе надо написать else {a.GetTask(w, r, id)}
+		}
+		a.GetTask(w, r, id)
+	}
+}
+
+func (a *Api) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("search") != "" {
+		s := r.URL.Query().Get("search")
+		a.SearchTasks(w, r, s)
+	} else {
+		a.GetAllTasks(w)
 	}
 }
 
@@ -122,7 +157,6 @@ func (a *Api) GetAllTasks(w http.ResponseWriter) {
 		http.Error(w, errorJson, http.StatusInternalServerError) // 500
 		return
 	}
-	//w.Write([]byte(fmt.Sprintf("%v", foundTasks)))
 
 	result := make(map[string][]models.Task) // для тестов
 	result["tasks"] = foundTasks
@@ -133,8 +167,6 @@ func (a *Api) GetAllTasks(w http.ResponseWriter) {
 		return
 	}
 
-	//fmt.Println(resp)
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(resp) // Write(resp)
@@ -142,11 +174,9 @@ func (a *Api) GetAllTasks(w http.ResponseWriter) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	//w.Write([]byte(fmt.Sprintf("%v", resp)))
 }
 
 func (a *Api) SearchTasks(w http.ResponseWriter, r *http.Request, search string) {
-	// r.URL.Query().Get(search)
 	foundTasks, err := a.repo.SearchTasks(search)
 	if err != nil {
 		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
@@ -166,10 +196,9 @@ func (a *Api) SearchTasks(w http.ResponseWriter, r *http.Request, search string)
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(resp) // Write(resp)
+	_, err = w.Write(resp) //
 	if err != nil {
 		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
-		// http.Error(w, err.Error(), http.StatusBadRequest)
 		http.Error(w, errorJson, http.StatusBadRequest)
 		return
 	}
@@ -181,40 +210,29 @@ func (a *Api) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
-		fmt.Println("err4:", err)
-		// http.Error(w, err.Error(), http.StatusBadRequest)
 		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
 		http.Error(w, errorJson, http.StatusBadRequest) // 400
 		return
 	}
-	fmt.Println("received:", buf.String())
+	log.Println("received:", buf.String())
 
-	var parseBody models.Task
+	parseBody := models.Task{}
 	err = json.Unmarshal(buf.Bytes(), &parseBody)
 	if err != nil {
-		fmt.Println("err3:", err)
-		// http.Error(w, err.Error(), http.StatusBadRequest)
 		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
 		http.Error(w, errorJson, http.StatusBadRequest)
 		return
 	}
 
 	err = parseBody.ValidateAndNormalizeDate()
-	fmt.Println("parseBody:", parseBody)
 	if err != nil {
-		fmt.Println("err2:", err)
-		// http.Error(w, err.Error(), http.StatusBadRequest)
 		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
 		http.Error(w, errorJson, http.StatusBadRequest)
-		fmt.Println(parseBody)
-		fmt.Println(parseBody.Comment)
 		return
 	}
 
 	id, err := a.repo.AddTask(parseBody)
 	if err != nil {
-		fmt.Println("err1:", err)
-		// http.Error(w, err.Error(), http.StatusInternalServerError)
 		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
 		http.Error(w, errorJson, http.StatusBadRequest)
 		return
@@ -223,6 +241,64 @@ func (a *Api) CreateTask(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("{\"id\":%d}", id))) //
+}
+
+// UpdateTask updates task in DB
+func (a *Api) UpdateTask(w http.ResponseWriter, r *http.Request) {
+	var buf bytes.Buffer
+
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusBadRequest) // 400
+		return
+	}
+
+	parseBody := models.Task{}
+	err = json.Unmarshal(buf.Bytes(), &parseBody)
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusBadRequest)
+		return
+	}
+
+	err = parseBody.ValidateAndNormalizeDate()
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusBadRequest)
+		return
+	}
+	idToSearch, err := strconv.Atoi(parseBody.ID)
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", "Can not convert id") // ("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusBadRequest)
+		return
+	}
+
+	_, err = a.repo.GetTask(idToSearch)
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", "Can not convert id") // ("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusBadRequest)
+		return
+	}
+
+	err = a.repo.UpdateTaskInBd(parseBody)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	jsonItem, err := json.Marshal(parseBody)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(jsonItem) //
 }
 
 /*
@@ -241,3 +317,29 @@ func (tr TasksRepository) GetTask(id int) (models.TaskCreationRequest, error) {
 	return s, nil
 }
 */
+
+func (a *Api) GetTask(w http.ResponseWriter, r *http.Request, id int) {
+	foundTask, err := a.repo.GetTask(id)
+	log.Println("we are in GetTask", "foundTask:", foundTask)
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusInternalServerError) // 500
+		return
+	}
+
+	resp, err := json.Marshal(foundTask)
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(resp) // Write(resp)
+	if err != nil {
+		errorJson := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+		http.Error(w, errorJson, http.StatusBadRequest)
+		return
+	}
+}

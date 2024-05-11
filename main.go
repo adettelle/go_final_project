@@ -21,9 +21,9 @@ func MethodSwitch(w http.ResponseWriter, r *http.Request, tRepository repo.Tasks
 	router.Handle("/*", http.FileServer(http.Dir(webDir)))
 	router.Get("/api/nextdate", handlers.GetNextDay)
 
-	if r.Method != http.MethodPost {
+	if r.Method != http.MethodPost { // почему != ??? Разве не наоборот???
 		router.Post("/api/task", api.CreateTask)
-	} else if r.Method != http.MethodGet {
+	} else if r.Method != http.MethodGet { // почему != ??? Разве не наоборот???
 		router.Get("/api/task", api.CreateTask)
 	}
 }
@@ -44,13 +44,16 @@ func main() {
 	r.Handle("/*", http.FileServer(http.Dir(webDir)))
 	r.Get("/api/nextdate", handlers.GetNextDay)
 
-	// if http.Request.Method.Post {
-	// 	r.Post("/api/task", api.CreateTask)
-	// } else if http.Request.Method != http.MethodGet {
-	// 	r.Get("/api/task", api.CreateTask)
-	// }
-	r.Get("/api/tasks", api.MyHandle)
-	r.Post("/api/task", api.MyHandle)
+	// api, которое ожидается в этом задании
+	// 1. POST /api/task создает таск
+	// 2. GET /api/task возвращает ошибку (судя по тестам это желаемое поведение)
+	// 3. GET /api/tasks возвращает набор тасков без фильтрации
+	// 4. GET /api/tasks?search=... возвращает набор тасков с фильрацией по параметру search
+	// 5. GET /api/tasks/{id} возвращает таск по id
+	r.HandleFunc("/api/task", api.TaskHandler) // get и post и put
+	r.Get("/api/tasks", api.GetTasksHandler)
+	r.Get("/api/tasks/{id}", api.GetTaskByIdHandler) // http://localhost:7540/api/tasks/257
+	// r.Put("/api/task", api.PutHandler)
 	// r.Post("/api/task", api.CreateTask)
 	// r.Get("/api/task", api.CreateTask)
 

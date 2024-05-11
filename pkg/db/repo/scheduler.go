@@ -37,20 +37,37 @@ func (tr TasksRepository) AddTask(t models.Task) (int, error) {
 	return int(id), nil
 }
 
+// put
+func (tr TasksRepository) UpdateTaskInBd(t models.Task) error {
+	_, err := tr.db.Exec("UPDATE scheduler SET date = :date, title = :title, comment = :comment,"+
+		"repeat = :repeat WHERE id = :id",
+		sql.Named("date", t.Date),
+		sql.Named("title", t.Title),
+		sql.Named("comment", t.Comment),
+		sql.Named("repeat", t.Repeat),
+		sql.Named("id", t.ID))
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Чтение строки по заданному id.
 // Из таблицы должна вернуться только одна строка.
-// func (tr TasksRepository) GetTask(id int) (models.Task, error) {
-// 	s := models.Task{}
-// 	row := tr.db.QueryRow("SELECT id, date, title, comment, repeat from task WHERE id = :id",
-// 		sql.Named("id", id))
+func (tr TasksRepository) GetTask(id int) (models.Task, error) {
+	s := models.Task{}
+	row := tr.db.QueryRow("SELECT id, date, title, comment, repeat from scheduler WHERE id = :id",
+		sql.Named("id", id))
 
-// 	// заполняем объект TaskCreationRequest данными из таблицы
-// 	err := row.Scan(&s.ID, &s.Date, &s.Title, &s.Comment, &s.Repeat)
-// 	if err != nil {
-// 		return s, err
-// 	}
-// 	return s, nil
-// }
+	// заполняем объект TaskCreationRequest данными из таблицы
+	err := row.Scan(&s.ID, &s.Date, &s.Title, &s.Comment, &s.Repeat)
+	if err != nil {
+		return s, err
+	}
+	return s, nil
+}
 
 // Из таблицы должны вернуться сроки с ближайшими датами.
 func (tr TasksRepository) GetAllTasks() ([]models.Task, error) {
@@ -79,8 +96,6 @@ func (tr TasksRepository) GetAllTasks() ([]models.Task, error) {
 		result = append(result, s)
 	}
 
-	fmt.Println(result)
-
 	return result, nil
 }
 
@@ -90,7 +105,6 @@ func (tr TasksRepository) SearchTasks(search string) ([]models.Task, error) {
 	var rows *sql.Rows
 
 	searchDate, err := time.Parse("02.01.2006", search)
-	fmt.Println("search:", search, "searchDate:", searchDate)
 	if err != nil {
 		rows, err = tr.db.Query("SELECT id, date, title, comment, repeat FROM scheduler "+
 			"WHERE title LIKE :search OR comment "+
