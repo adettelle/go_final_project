@@ -54,6 +54,8 @@ func RenderApiError(w http.ResponseWriter, err error, status int) {
 	http.Error(w, string(errorJson), status)
 }
 
+// ------------------------------------
+
 // checkRepeatRule checks if the reapeat rule starts with correct letter
 func checkRepeatRule(repeat string) bool {
 	result := strings.Split(repeat, " ")
@@ -145,19 +147,16 @@ func (a *Api) TaskHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == http.MethodGet:
 		idToSearch := r.URL.Query().Get("id") // это параметр запроса
-		// idToSearch, err := AsInt(r.URL.Query().Get("id"))
-		if idToSearch != "" {
-			id, err := strconv.Atoi(idToSearch)
-			if err != nil {
-				log.Println("error:", err)
-				RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
-				return // иначе пойдем в a.GetTask(w, r, id) это стиль с гардами (защитниками). иначе надо написать else {a.GetTask(w, r, id)}
-			}
-			a.GetTask(w, r, id)
-		} else {
-			RenderApiError(w, fmt.Errorf(IdMissingError), http.StatusBadRequest)
-			return
+
+		// if idToSearch != "" {
+		// не нужна проверка на пустой id, потому что strconv.Atoi в таком случае всё равно вернёт ошибку
+		id, err := strconv.Atoi(idToSearch)
+		if err != nil {
+			log.Println("error:", err)
+			RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
+			return // иначе пойдем в a.GetTask(w, r, id) это стиль с гардами (защитниками). иначе надо написать else {a.GetTask(w, r, id)}
 		}
+		a.GetTask(w, r, id)
 
 	case r.Method == http.MethodPost:
 		log.Println("We are in MethodPost")
@@ -178,15 +177,14 @@ func (a *Api) TaskHandler(w http.ResponseWriter, r *http.Request) {
 // http://localhost:7540/api/tasks/257
 func (a *Api) GetTaskByIdHandler(w http.ResponseWriter, r *http.Request) {
 	idToSearch := chi.URLParam(r, "id")
-	if idToSearch != "" {
-		id, err := strconv.Atoi(idToSearch)
-		if err != nil {
-			log.Println("error:", err)
-			RenderApiError(w, fmt.Errorf(IdMissingError), http.StatusBadRequest)
-			return
-		}
-		a.GetTask(w, r, id)
+
+	id, err := strconv.Atoi(idToSearch)
+	if err != nil {
+		log.Println("error:", err)
+		RenderApiError(w, fmt.Errorf(IdMissingError), http.StatusBadRequest)
+		return
 	}
+	a.GetTask(w, r, id)
 }
 
 func (a *Api) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
@@ -355,27 +353,22 @@ func (a *Api) UpdateTask(w http.ResponseWriter, r *http.Request) {
 func (a *Api) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	log.Println("We are in DeleteTask")
 	idToSearch := r.URL.Query().Get("id")
-	if idToSearch != "" {
-		id, err := strconv.Atoi(idToSearch)
-		if err != nil {
-			log.Println("error:", err)
-			RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
-			return
-		}
 
-		err = a.repo.DeleteTask(id)
-		if err != nil {
-			log.Println("error:", err)
-			RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusInternalServerError) // 500
-			return
-		} else {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("{}")) // пустой JSON
-			return
-		}
+	id, err := strconv.Atoi(idToSearch)
+	if err != nil {
+		log.Println("error:", err)
+		RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
+		return
+	}
 
+	err = a.repo.DeleteTask(id)
+	if err != nil {
+		log.Println("error:", err)
+		RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusInternalServerError) // 500
+		return
 	} else {
-		RenderApiError(w, fmt.Errorf(IdMissingError), http.StatusInternalServerError) // 500
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}")) // пустой JSON
 		return
 	}
 }
@@ -383,29 +376,28 @@ func (a *Api) DeleteTask(w http.ResponseWriter, r *http.Request) {
 func (a *Api) TaskDoneHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("We are in TaskDoneHandler")
 	idToSearch := r.URL.Query().Get("id")
-	if idToSearch != "" {
-		id, err := strconv.Atoi(idToSearch)
-		if err != nil {
-			log.Println("error:", err)
-			RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
-			return
-		}
 
-		newTask, err := a.repo.PostTaskDone(id)
-		if newTask == nil {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("{}")) // строка с пустым json
-			return
-		}
-		if err != nil {
-			log.Println("error:", err)
-			RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
-			return
-		} else {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("{}")) // w.Write(resp)
-			return
-		}
+	id, err := strconv.Atoi(idToSearch)
+	if err != nil {
+		log.Println("error:", err)
+		RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
+		return
+	}
+
+	newTask, err := a.repo.PostTaskDone(id)
+	if newTask == nil {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}")) // строка с пустым json
+		return
+	}
+	if err != nil {
+		log.Println("error:", err)
+		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
+		return
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}")) // w.Write(resp)
+		return
 	}
 }
 
