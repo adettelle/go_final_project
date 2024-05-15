@@ -38,27 +38,28 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 	}
 
 	rule := strings.Split(repeat, " ")
-	var result time.Time
+
+	var parsedRepeat parser.Repeat
 
 	log.Printf("rule[0] before switch is: %v", rule[0])
 	switch {
 	case rule[0] == "y":
-		result, err = parser.ParseYrule(now, dt, rule)
+		parsedRepeat, err = parser.ParseYRepeat(rule)
 		if err != nil {
 			return "", err // чтобы тест не падал на строке log.Fatal(err), надо вместо этого возвращать ошибку
 		}
 	case rule[0] == "d":
-		result, err = parser.ParseDrule(now, dt, rule)
+		parsedRepeat, err = parser.ParseDRepeat(rule)
 		if err != nil {
 			return "", err
 		}
 	case rule[0] == "w":
-		result, err = parser.ParseWrule(now, dt, rule)
+		parsedRepeat, err = parser.ParseDRepeat(rule)
 		if err != nil {
 			return "", err
 		}
 	case rule[0] == "m":
-		result, err = parser.ParseMrule(now, dt, rule)
+		parsedRepeat, err = parser.ParseMRepeat(rule, now)
 		if err != nil {
 			return "", err
 		}
@@ -66,5 +67,9 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 		return "", fmt.Errorf("Unkown repeat identifier %s", rule[0])
 	}
 
-	return result.Format("20060102"), nil
+	d, err := parsedRepeat.GetNextDate(now, dt)
+	if err != nil {
+		return "", err
+	}
+	return d.Format("20060102"), nil
 }
