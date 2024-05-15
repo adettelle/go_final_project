@@ -16,3 +16,9 @@ go test -run ^TestTasks$ ./tests
 
 echo 'go test -run ^TestEditTask$ ./tests'
 go test -run ^TestEditTask$ ./tests
+
+echo 'go test -run ^TestDone$ ./tests'
+go test -run ^TestDone$ ./tests
+
+echo 'go test -run ^TestDelTask$ ./tests'
+go test -run ^TestDelTask$ ./tests

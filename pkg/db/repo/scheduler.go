@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/adettelle/go_final_project/pkg/dateutil"
 	"github.com/adettelle/go_final_project/pkg/models"
 )
 
@@ -37,7 +38,36 @@ func (tr TasksRepository) AddTask(t models.Task) (int, error) {
 	return int(id), nil
 }
 
-// put
+// PostTaskDone moves task according the repeat rule
+func (tr TasksRepository) PostTaskDone(id int) (*models.Task, error) {
+	t, err := tr.GetTask(id)
+	if err != nil {
+		return nil, err
+	}
+	if t.Repeat == "" {
+		fmt.Println("Repeat is null")
+		err = tr.DeleteTask(id)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	// далее else
+	fmt.Println("Repeat is not null")
+	now := time.Now()
+	nextDate, err := dateutil.NextDate(now, t.Date, t.Repeat)
+	if err != nil {
+		return nil, err
+	}
+	err = tr.UpdateTaskDate(t, nextDate)
+	if err != nil {
+		return nil, err
+	}
+
+	return &t, nil
+}
+
+// UpdateTaskInBd - put Method, updates task in DB.
 func (tr TasksRepository) UpdateTaskInBd(t models.Task) error {
 	_, err := tr.db.Exec("UPDATE scheduler SET date = :date, title = :title, comment = :comment,"+
 		"repeat = :repeat WHERE id = :id",
@@ -88,7 +118,7 @@ func (tr TasksRepository) GetAllTasks() ([]models.Task, error) {
 	result := []models.Task{}
 	// заполняем объект Task данными из таблицы
 	for rows.Next() { // пока есть записи
-		s := models.Task{} // создлаем новый объект  Task и заполняем его данными из текущего row
+		s := models.Task{} // создаем новый объект  Task и заполняем его данными из текущего row
 		err := rows.Scan(&s.ID, &s.Date, &s.Title, &s.Comment, &s.Repeat)
 		if err != nil {
 			return nil, err
@@ -125,7 +155,8 @@ func (tr TasksRepository) SearchTasks(search string) ([]models.Task, error) {
 			return nil, err
 		}
 	}
-	defer rows.Close()
+	// ????????????????????????????
+	defer rows.Close() // ВОПРОС: если мы делаем _, err вмечто rows, err , то что закрывать???????????
 	result := []models.Task{}
 	// заполняем объект Task данными из таблицы
 	for rows.Next() { // пока есть записи
@@ -138,4 +169,28 @@ func (tr TasksRepository) SearchTasks(search string) ([]models.Task, error) {
 	}
 
 	return result, nil
+}
+
+// Удаление строки по заданному id.
+func (tr TasksRepository) DeleteTask(id int) error {
+	_, err := tr.db.Query("DELETE FROM scheduler WHERE id = :id",
+		sql.Named("id", id))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UpdateTaskInBd updates task in DB according the new date by the rule in repeat.
+func (tr TasksRepository) UpdateTaskDate(t models.Task, newDate string) error {
+	_, err := tr.db.Exec("UPDATE scheduler SET date = :date WHERE id = :id",
+		sql.Named("date", newDate),
+		sql.Named("id", t.ID))
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
