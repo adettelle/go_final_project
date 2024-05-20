@@ -39,7 +39,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Handle("/*", http.FileServer(http.Dir(webDir)))
-	r.Get("/api/nextdate", api.Auth(handlers.GetNextDay))
+	r.Get("/api/nextdate", handlers.GetNextDay)
 
 	// api, которое ожидается в этом задании
 	// 1. POST /api/task создает таск

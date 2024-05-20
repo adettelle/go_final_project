@@ -135,12 +135,20 @@ func GetNextDay(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err := fmt.Errorf("Wrong repeat value")
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		WriteResponse(w, []byte(err.Error()))
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(nextDay))
+	WriteResponse(w, []byte(nextDay)) // w.Write([]byte(nextDay))
+}
+
+// WriteResponse: если происходит ошибка в методе Write, то она фатальная (panic)
+func WriteResponse(w http.ResponseWriter, s []byte) {
+	_, err := w.Write(s)
+	if err != nil {
+		log.Fatalf("Can not write response: %s", err.Error())
+	}
 }
 
 // это совокупность хэндлеров, часто называется api
@@ -300,7 +308,7 @@ func (a *Api) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("{\"id\":%d}", id))) //
+	WriteResponse(w, []byte(fmt.Sprintf("{\"id\":%d}", id))) //
 }
 
 // UpdateTask updates task in DB
@@ -358,7 +366,7 @@ func (a *Api) UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusCreated)
-	w.Write(jsonItem)
+	WriteResponse(w, jsonItem)
 }
 
 func (a *Api) DeleteTask(w http.ResponseWriter, r *http.Request) {
@@ -379,7 +387,7 @@ func (a *Api) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{}")) // пустой JSON
+		WriteResponse(w, []byte("{}")) // пустой JSON
 		return
 	}
 }
@@ -398,7 +406,7 @@ func (a *Api) TaskDoneHandler(w http.ResponseWriter, r *http.Request) {
 	newTask, err := a.repo.PostTaskDone(id)
 	if newTask == nil {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{}")) // строка с пустым json
+		WriteResponse(w, []byte("{}")) // строка с пустым json
 		return
 	}
 	if err != nil {
@@ -407,7 +415,7 @@ func (a *Api) TaskDoneHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{}")) // w.Write(resp)
+		WriteResponse(w, []byte("{}")) // w.Write(resp)
 		return
 	}
 }
@@ -479,7 +487,7 @@ func (a *Api) SigninHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(respBody))
+	WriteResponse(w, respBody)
 	w.WriteHeader(http.StatusOK)
 }
 
