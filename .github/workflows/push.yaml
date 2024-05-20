@@ -1,0 +1,26 @@
+name: GO
+
+on: push # на любой push
+  
+jobs:
+  
+    build:
+      runs-on: ubuntu-latest
+      steps:
+      # извлекает репозиторий для дальнейшей работы с ним
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4 # установит Go в систему
+  
+      - name: Build
+        run: go build -v ./cmd/main.go
+    
+    # Задание проверяет код на соответствие стилю и отсутствие логических ошибок
+    lint:
+      # Задание "lint" зависит от заданий "build" будет выполнено после него
+      needs: build
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v3
+        - uses: actions/setup-go@v4
+        # Используется действие "golangci/golangci-lint-action@v3", которое запускает линтер. Он проверит код на соответствие стилю и отсутствие логических ошибок
+        - uses: golangci/golangci-lint-action@v3
