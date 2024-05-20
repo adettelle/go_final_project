@@ -11,10 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/adettelle/go_final_project/pkg/config"
 	"github.com/adettelle/go_final_project/pkg/dateutil"
 	"github.com/adettelle/go_final_project/pkg/db/repo"
 	"github.com/adettelle/go_final_project/pkg/models"
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
@@ -30,6 +32,14 @@ const (
 	InternalServerError = "Internal server error."
 	ValidatingDateError = "Error in validating date."
 )
+
+type signinRequest struct {
+	Password string `json:"password"`
+}
+
+type signinResponse struct {
+	Token string `json:"token"`
+}
 
 // Обработка ошибок для возврата ошибки в виде json.
 type apiError struct {
@@ -135,12 +145,13 @@ func GetNextDay(w http.ResponseWriter, r *http.Request) {
 
 // это совокупность хэндлеров, часто называется api
 type Api struct {
-	repo *repo.TasksRepository
+	repo   *repo.TasksRepository
+	config *config.Config
 }
 
 // это конструктор объекта api.
-func NewApi(repo *repo.TasksRepository) *Api {
-	return &Api{repo: repo} // создаем ссылку на объект api со свойством repo, равным repo из параметров функции
+func NewApi(repo *repo.TasksRepository, config *config.Config) *Api {
+	return &Api{repo: repo, config: config} // создаем ссылку на объект api со свойством repo, равным repo из параметров функции
 }
 
 func (a *Api) TaskHandler(w http.ResponseWriter, r *http.Request) {
@@ -260,7 +271,7 @@ func (a *Api) CreateTask(w http.ResponseWriter, r *http.Request) {
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		log.Println("err:", err)
-		RenderApiError(w, fmt.Errorf("Error in creating task"), http.StatusBadRequest) // 400
+		RenderApiError(w, fmt.Errorf(ReadingError), http.StatusBadRequest) // 400
 		return
 	}
 	log.Println("received:", buf.String())
@@ -425,4 +436,101 @@ func (a *Api) GetTask(w http.ResponseWriter, r *http.Request, id int) {
 		RenderApiError(w, fmt.Errorf(ResponseWriteError), http.StatusBadRequest)
 		return
 	}
+}
+
+// SigninHandler проверяет пароль и генерирует jwt token, если пароль верный
+func (a *Api) SigninHandler(w http.ResponseWriter, r *http.Request) {
+	var buf bytes.Buffer
+
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		RenderApiError(w, fmt.Errorf(ReadingError), http.StatusBadRequest)
+		return
+	}
+
+	// берем пароль из request Body и записываем его в структуру signinRequest{} в поле Password
+	reqBody := signinRequest{}
+	err = json.Unmarshal(buf.Bytes(), &reqBody)
+	if err != nil {
+		RenderApiError(w, fmt.Errorf(UnMarshallingError), http.StatusBadRequest)
+		return
+	}
+
+	secret := []byte(a.config.EncryptionSecretKey)
+	hashedUserPassword := HashPassword([]byte(reqBody.Password), secret)
+	hashedEnvPassword := HashPassword([]byte(a.config.AppPassword), secret)
+
+	if hashedUserPassword != hashedEnvPassword {
+		RenderApiError(w, fmt.Errorf("Wrong password."), http.StatusUnauthorized)
+		return
+	}
+
+	// получаем подписанный токен
+	tokenValue, err := token(reqBody.Password, a.config.EncryptionSecretKey)
+	if err != nil {
+		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError)
+	}
+
+	// записываем в response Body токен
+	response := signinResponse{Token: tokenValue}
+	respBody, err := json.Marshal(response)
+	if err != nil {
+		RenderApiError(w, fmt.Errorf(MarshallingError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte(respBody))
+	w.WriteHeader(http.StatusOK)
+}
+
+// добавим проверку аутентификации для API-запросов
+func (a *Api) Auth(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// fmt.Println(r.Cookie("token")) // token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwYXNzd29yZCI6IjdhMzVhZTIwYzlhZmYyY2I5MWVhYWQxODc0NzIyZDFhYzgxMzQ4MjM4OThmOTE5YWY1ZjM4ZDg4MzQ1YzFmN2YifQ.ALEVDX8JerY2jnHN1uJG8URVpsxjSr0MvNGI5P1u4ts <nil>
+
+		// смотрим наличие пароля
+		pass := a.config.AppPassword
+		if len(pass) > 0 {
+			var jwtFromRequest string // JWT-токен из куки
+			// получаем куку
+			cookie, err := r.Cookie("token")
+			if err != nil {
+				RenderApiError(w, fmt.Errorf("Empty token."), http.StatusUnauthorized)
+				return
+			}
+			jwtFromRequest = cookie.Value
+
+			secret := []byte(a.config.EncryptionSecretKey)
+
+			// валидация и проверка JWT-токена
+			// парсим токен
+			jwtToken, err := jwt.Parse(jwtFromRequest, func(t *jwt.Token) (interface{}, error) {
+				return secret, nil
+			})
+			if err != nil {
+				RenderApiError(w, fmt.Errorf("Invalid token."), http.StatusUnauthorized)
+				return
+			}
+
+			// приводим поле Claims к типу jwt.MapClaims
+			res, ok := jwtToken.Claims.(jwt.MapClaims)
+			if !ok {
+				RenderApiError(w, fmt.Errorf("Failed to typecast to jwt.MapCalims."), http.StatusUnauthorized)
+				return
+			}
+
+			// Так как jwt.Claims — словарь вида map[string]inteface{}, используем синтакис получения
+			// занчения по ключу. Получаем значение ключа "password"
+			pass := res["password"]
+			// loginRaw — интерфейс, так как тип значения в jwt.Claims — интерфейс.
+			// Чтобы получить строку, нужно снова сделать приведение типа к строке.
+			_, ok = pass.(string)
+			if !ok {
+				RenderApiError(w, fmt.Errorf("Failed to typecast to string."), http.StatusUnauthorized)
+				return
+			}
+			// fmt.Println(password)
+		}
+		next(w, r)
+	})
 }

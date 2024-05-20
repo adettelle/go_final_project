@@ -54,12 +54,12 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 			return "", err
 		}
 	case rule[0] == "w":
-		parsedRepeat, err = parser.ParseDRepeat(rule)
+		parsedRepeat, err = parser.ParseWRepeat(rule)
 		if err != nil {
 			return "", err
 		}
 	case rule[0] == "m":
-		parsedRepeat, err = parser.ParseMRepeat(rule, now)
+		parsedRepeat, err = parser.ParseMRepeat(rule, now, date)
 		if err != nil {
 			return "", err
 		}

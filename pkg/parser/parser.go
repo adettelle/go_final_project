@@ -67,16 +67,16 @@ func ParseWRepeat(rule []string) (*WRepeat, error) {
 		return nil, fmt.Errorf("Error in w rule.")
 	}
 
-	week := []int{}
+	weekDays := []int{}
 	x := strings.Split(rule[1], ",")
 	for i := 0; i < len(x); i++ {
 		num, err := strconv.Atoi(x[i])
 		if err != nil || num > 7 || num < 1 {
 			return nil, fmt.Errorf("Can not parse days for repeat value.")
 		}
-		week = append(week, num)
+		weekDays = append(weekDays, num)
 	}
-	return &WRepeat{nums: week}, nil
+	return &WRepeat{nums: weekDays}, nil
 }
 
 func (wr *WRepeat) GetNextDate(now time.Time, date time.Time) (time.Time, error) {
@@ -119,7 +119,7 @@ func (mr *MRepeat) hasMonths() bool {
 // ParseMRepeat first checks the the second part of repeat rule string for "m" rule.
 // -1 and -2 are converted to the last day of the month and day before last.
 // Then checks the the third part of repeat rule string for "m" rule.
-func ParseMRepeat(rule []string, now time.Time) (*MRepeat, error) {
+func ParseMRepeat(rule []string, now time.Time, date string) (*MRepeat, error) {
 	// Сначала всегда рассматриваем сегодняшний месяц.
 	// Смотрим со всеми днями, а уж если не подходят предложенные правилом дни (все < сегодня),
 	// то месяц берем следующий месяц.
@@ -142,6 +142,13 @@ func ParseMRepeat(rule []string, now time.Time) (*MRepeat, error) {
 
 	daysInRule := strings.Split(rule[1], ",") // daysInRule - это дни в правиле m
 
+	// определим, от какой даты (now или date) вычислять nextdate
+	d, err := time.Parse("20060102", date)
+	if err != nil {
+		return nil, err
+	}
+	startdate := startDateForMWrule(now, d)
+
 	for _, day := range daysInRule {
 		num, err := strconv.Atoi(day)
 		if err != nil {
@@ -153,13 +160,13 @@ func ParseMRepeat(rule []string, now time.Time) (*MRepeat, error) {
 			// time.Date принимает значения вне их обычных диапазонов, то есть
 			// значения нормализуются во время преобразования
 			// Чтобы рассчитать количество дней текущего месяца (t), смотрим на день следующего месяца
-			t := Date(now.Year(), int(now.Month()+1), 0)
+			t := Date(startdate.Year(), int(startdate.Month()+1), 0)
 			days = append(days, int(t.Day()))
 		} else if num == -2 {
 			// time.Date принимает значения вне их обычных диапазонов, то есть
 			// значения нормализуются во время преобразования
 			// Чтобы рассчитать количество дней текущего месяца (t), смотрим на день следующего месяца
-			t := Date(now.Year(), int(now.Month()+1), 0)
+			t := Date(startdate.Year(), int(startdate.Month()+1), 0)
 			days = append(days, int(t.Day())-1)
 		} else {
 			return nil, fmt.Errorf("Error in checking days in repeat rule 'm', got '%s'", day)
