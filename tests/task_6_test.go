@@ -25,30 +25,21 @@ func TestTask(t *testing.T) {
 	}
 
 	todo := addTask(t, task)
-	fmt.Println("todo now is:", todo)
 	body, err := requestJSON("api/task", nil, http.MethodGet)
-	// fmt.Println("string(body)1:", string(body))
 	assert.NoError(t, err)
 	var m map[string]string
 	err = json.Unmarshal(body, &m)
-	fmt.Println("err:", err)
-	fmt.Println("string(body):", string(body))
 	assert.NoError(t, err)
 
 	e, ok := m["error"]
 	assert.False(t, !ok || len(fmt.Sprint(e)) == 0,
 		"Ожидается ошибка для вызова /api/task")
 
-	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!")
 	body, err = requestJSON("api/task?id="+todo, nil, http.MethodGet)
-	fmt.Println("body44", string(body)) ////
 	assert.NoError(t, err)
 	err = json.Unmarshal(body, &m)
-	fmt.Println("body", string(body)) ////
 	assert.NoError(t, err)
 
-	fmt.Println("todo:", todo, "m['id']:", m["id"], &m)
-	fmt.Println("m:", m)
 	assert.Equal(t, todo, m["id"])
 	assert.Equal(t, task.date, m["date"])
 	assert.Equal(t, task.title, m["title"])
@@ -80,10 +71,10 @@ func TestEditTask(t *testing.T) {
 		{"", task{"20240129", "Тест", "", ""}},
 		{"abc", task{"20240129", "Тест", "", ""}},
 		{"7645346343", task{"20240129", "Тест", "", ""}},
-		{id, task{"20240129", "", "", ""}},               // ok
-		{id, task{"20240192", "Qwerty", "", ""}},         // ok
-		{id, task{"28.01.2024", "Заголовок", "", ""}},    // ok
-		{id, task{"20240212", "Заголовок", "", "ooops"}}, // ok
+		{id, task{"20240129", "", "", ""}},
+		{id, task{"20240192", "Qwerty", "", ""}},
+		{id, task{"28.01.2024", "Заголовок", "", ""}},
+		{id, task{"20240212", "Заголовок", "", "ooops"}},
 	}
 	for _, v := range tbl {
 		m, err := postJSON("api/task", map[string]any{
@@ -100,7 +91,6 @@ func TestEditTask(t *testing.T) {
 		if ok {
 			errVal = fmt.Sprint(e)
 		}
-		fmt.Println("m:", m)
 		assert.NotEqual(t, len(errVal), 0, "Ожидается ошибка для значения %v", v)
 	}
 
