@@ -21,6 +21,9 @@ import (
 // задача назначается в указанные дни месяца.
 func NextDate(now time.Time, date time.Time, repeat string) (string, error) {
 	pr, err := parser.ParseRepeat(now, date, repeat)
+	if err != nil {
+		return "", err
+	}
 
 	d, err := pr.GetNextDate(now, date)
 	if err != nil {
