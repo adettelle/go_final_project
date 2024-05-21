@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/adettelle/go_final_project/pkg/config"
-	"github.com/adettelle/go_final_project/pkg/db"
-	"github.com/adettelle/go_final_project/pkg/db/repo"
-	"github.com/adettelle/go_final_project/pkg/handlers"
+	"github.com/adettelle/go_final_project/internal/config"
+	"github.com/adettelle/go_final_project/internal/db"
+	"github.com/adettelle/go_final_project/internal/db/repo"
+	"github.com/adettelle/go_final_project/internal/handlers"
 	"github.com/go-chi/chi/v5"
 	_ "modernc.org/sqlite"
 )
