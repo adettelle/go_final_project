@@ -17,7 +17,7 @@ If you mark a task as completed, it is transferred to the next date in accordanc
 
 To run the project locally use the following command:
 ```
-go run ./cmd/main.go
+TODO_PASSWORD=1234567 go run ./cmd/main.go
 ```
 Settings are passed with the following environment variables:
 

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/adettelle/go_final_project/internal/config"
@@ -32,6 +31,9 @@ const (
 	InternalServerError = "Internal server error."
 	ValidatingDateError = "Error in validating date."
 )
+
+// repeatRulePattern checks if the reapeat rule starts with correct letter
+var repeatRulePattern *regexp.Regexp = regexp.MustCompile("^[dmwy].*")
 
 type signinRequest struct {
 	Password string `json:"password"`
@@ -66,24 +68,9 @@ func RenderApiError(w http.ResponseWriter, err error, status int) {
 
 // ------------------------------------
 
-// checkRepeatRule checks if the reapeat rule starts with correct letter
-func checkRepeatRule(repeat string) bool {
-	result := strings.Split(repeat, " ")
-	match, err := regexp.MatchString("[d, m, w, y]", result[0])
-	if err != nil {
-		return false
-	} else if result[0] == "d" {
-		if len(result) == 1 {
-			return false
-		}
-	}
-	return match
-}
-
 // GetNextDay find next day for the task
-// почему мы можем сделать Get("now")?????????????? ведь у таска нет now
 func GetNextDay(w http.ResponseWriter, r *http.Request) {
-	now := r.URL.Query().Get("now") // ????????????????
+	now := r.URL.Query().Get("now")
 	date := r.URL.Query().Get("date")
 	repeat := r.URL.Query().Get("repeat")
 
@@ -123,7 +110,7 @@ func GetNextDay(w http.ResponseWriter, r *http.Request) {
 		log.Println("error:", err)
 		RenderApiError(w, fmt.Errorf(InvalidRepeatError), http.StatusBadRequest)
 		return
-	} else if !checkRepeatRule(repeat) {
+	} else if !repeatRulePattern.MatchString(repeat) {
 		log.Println("error:", err)
 		RenderApiError(w, fmt.Errorf(InvalidRepeatError), http.StatusBadRequest)
 		return
@@ -223,7 +210,7 @@ func (a *Api) GetAllTasks(w http.ResponseWriter) {
 		return
 	}
 
-	result := make(map[string][]models.Task) // для тестов
+	result := make(map[string][]models.Task)
 	result["tasks"] = foundTasks
 
 	resp, err := json.Marshal(result)
@@ -244,14 +231,14 @@ func (a *Api) GetAllTasks(w http.ResponseWriter) {
 }
 
 func (a *Api) SearchTasks(w http.ResponseWriter, r *http.Request, search string) {
-	foundTasks, err := a.repo.SearchTasks(search)
+	foundTasks, err := a.repo.SearchTasks(repo.QueryDataFromString(search))
 	if err != nil {
 		log.Println("error:", err)
 		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
 		return
 	}
 
-	result := make(map[string][]models.Task) // для тестов
+	result := make(map[string][]models.Task)
 	result["tasks"] = foundTasks
 
 	resp, err := json.Marshal(result)
@@ -264,7 +251,7 @@ func (a *Api) SearchTasks(w http.ResponseWriter, r *http.Request, search string)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 
-	_, err = w.Write(resp) //
+	_, err = w.Write(resp)
 	if err != nil {
 		log.Println("error:", err)
 		RenderApiError(w, fmt.Errorf(ResponseWriteError), http.StatusBadRequest)
@@ -438,7 +425,7 @@ func (a *Api) GetTask(w http.ResponseWriter, r *http.Request, id int) {
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(resp) // Write(resp)
+	_, err = w.Write(resp)
 	if err != nil {
 		log.Println("error:", err)
 		RenderApiError(w, fmt.Errorf(ResponseWriteError), http.StatusBadRequest)
@@ -474,7 +461,7 @@ func (a *Api) SigninHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// получаем подписанный токен
-	tokenValue, err := token(reqBody.Password, a.config.EncryptionSecretKey)
+	tokenValue, err := createToken(reqBody.Password, a.config.EncryptionSecretKey)
 	if err != nil {
 		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError)
 	}

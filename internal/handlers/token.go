@@ -9,7 +9,7 @@ import (
 )
 
 // token создаёт подписанный токен
-func token(userPassedPassword string, encKey string) (string, error) {
+func createToken(userPassedPassword string, encKey string) (string, error) {
 	// Secret key to sign and verify the token lately
 	secret := []byte(encKey)
 
@@ -41,6 +41,6 @@ func token(userPassedPassword string, encKey string) (string, error) {
 
 // функция для создания подписи
 // HashPassword - это hash
-func HashPassword(password []byte, secretKey []byte) string { // [32]byte {
+func HashPassword(password []byte, secretKey []byte) string {
 	return fmt.Sprintf("%x", sha256.Sum256(append(password, secretKey...)))
 }

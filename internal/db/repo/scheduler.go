@@ -3,6 +3,7 @@ package repo
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/adettelle/go_final_project/internal/dateutil"
@@ -135,40 +136,80 @@ func (tr TasksRepository) GetAllTasks() ([]models.Task, error) {
 	return result, nil
 }
 
+// ---------------------------
+
+// структуры, методы и интерфейс для абстрагирования параметров поиска
+type DateSearchParam struct {
+	Date time.Time
+}
+
+func (dp *DateSearchParam) GetQueryData() *QueryData {
+	return &QueryData{
+		Param:     dp.Date.Format("20060102"),
+		Condition: "WHERE date LIKE :search",
+	}
+}
+
+type TextSearchParam struct {
+	Text string
+}
+
+func (tp *TextSearchParam) GetQueryData() *QueryData {
+	return &QueryData{
+		Param:     fmt.Sprintf("%%%s%%", tp.Text),
+		Condition: "WHERE title LIKE :search OR comment LIKE :search",
+	}
+}
+
+type SearchQueryData interface {
+	GetQueryData() *QueryData
+}
+
+func QueryDataFromString(search string) SearchQueryData {
+	searchDate, err := time.Parse("02.01.2006", search)
+	if err != nil {
+		return &TextSearchParam{Text: search}
+	} else {
+		return &DateSearchParam{Date: searchDate}
+	}
+}
+
+type QueryData struct {
+	Param     string
+	Condition string
+}
+
+// ---------------------------
+
 // Из таблицы должна вернуться срока в соответсвии с критерием поиска search.
-func (tr TasksRepository) SearchTasks(search string) ([]models.Task, error) {
+func (tr TasksRepository) SearchTasks(searchData SearchQueryData) ([]models.Task, error) {
 	limitConst := 20
 	var rows *sql.Rows
 
-	searchDate, err := time.Parse("02.01.2006", search)
+	queryData := searchData.GetQueryData()
+
+	querySQL := strings.Join([]string{
+		"SELECT id, date, title, comment, repeat FROM scheduler",
+		queryData.Condition,
+		"ORDER BY date LIMIT :limit",
+	}, " ")
+
+	rows, err := tr.db.Query(querySQL,
+		sql.Named("search", queryData.Param),
+		sql.Named("limit", limitConst))
+
 	if err != nil {
-		rows, err = tr.db.Query("SELECT id, date, title, comment, repeat FROM scheduler "+
-			"WHERE title LIKE :search OR comment "+
-			"LIKE :search ORDER BY date LIMIT :limit",
-			sql.Named("search", fmt.Sprintf("%%%s%%", search)),
-			sql.Named("limit", limitConst))
-
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		rows, err = tr.db.Query("SELECT id, date, title, comment, repeat FROM scheduler "+
-			"WHERE date LIKE :search ORDER BY date LIMIT :limit",
-			sql.Named("search", searchDate.Format("20060102")),
-			sql.Named("limit", limitConst))
-
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
-	// ????????????????????????????
-	defer rows.Close() // ВОПРОС: если мы делаем _, err вмечто rows, err , то что закрывать???????????
+
+	defer rows.Close()
+
 	result := []models.Task{}
 	// заполняем объект Task данными из таблицы
 	for rows.Next() { // пока есть записи
-		s := models.Task{} // создлаем новый объект  Task и заполняем его данными из текущего row
-		err := rows.Scan(&s.ID, &s.Date, &s.Title, &s.Comment, &s.Repeat)
-		if err != nil {
+		s := models.Task{} // создаем новый объект  Task и заполняем его данными из текущего row
+
+		if err := rows.Scan(&s.ID, &s.Date, &s.Title, &s.Comment, &s.Repeat); err != nil {
 			return nil, err
 		}
 		result = append(result, s)
@@ -179,7 +220,7 @@ func (tr TasksRepository) SearchTasks(search string) ([]models.Task, error) {
 
 // Удаление строки по заданному id.
 func (tr TasksRepository) DeleteTask(id int) error {
-	_, err := tr.db.Query("DELETE FROM scheduler WHERE id = :id",
+	_, err := tr.db.Exec("DELETE FROM scheduler WHERE id = :id",
 		sql.Named("id", id))
 	if err != nil {
 		return err

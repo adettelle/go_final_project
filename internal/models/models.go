@@ -25,7 +25,7 @@ func (t *Task) ValidateAndNormalizeDate() error {
 	now := time.Now().Truncate(24 * time.Hour)
 	log.Printf("Today is %v", now)
 
-	if t.Date == "" { // Если поле date не указано или содержит пустую строку - у нас оно задано NOT NULL - ?????????
+	if t.Date == "" {
 		t.Date = now.Format("20060102")
 		log.Println("If t.Date is null.")
 		return nil
@@ -51,7 +51,7 @@ func (t *Task) ValidateAndNormalizeDate() error {
 
 	if now.After(date) { // Если дата меньше сегодняшнего числа
 		// если правило повторения не указано или равно пустой строке, подставляется сегодняшнее число
-		if t.Repeat == "" { // правило повторения не указано или равно пустой строке - это разное????????
+		if t.Repeat == "" {
 			log.Printf("Repeat rule is empty.")
 			t.Date = now.Format("20060102")
 		} else {
