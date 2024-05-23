@@ -168,6 +168,35 @@ func ParseMRepeat(rule []string, now time.Time, date time.Time) (*MRepeat, error
 	// 	return nil, err
 	// }
 	startdate := startDateForMWrule(now, date)
+	log.Println("startdate:", startdate)
+	// // новый код
+	// // создадим слайс чисел дней вместо слайса string
+	// daysIncoming := []int{}
+
+	// for _, day := range daysInRule {
+	// 	num, err := strconv.Atoi(day)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("Error in checking days in repeat rule 'm', got '%s'", day)
+	// 	}
+	// 	daysIncoming = append(daysIncoming, num)
+	// }
+	// sort.Ints(daysIncoming)
+
+	// // случай, когда дни [-1] или [-2] или [-1,-2] или [-2,-1]
+	// if len(daysIncoming) == 1 && daysIncoming[0] == -1 {
+	// 	t := Date(startdate.Year(), int(startdate.Month()+1), 0) // t - последний день текущего месяца
+	// 	if startdate.Day() < t.Day() {
+	// 		days = append(days, int(t.Day()))
+	// 	} else {
+	// 		// надо обозначить, что в этом месяце дней уже нет, надо рассматривать следующий месяц
+	// 	}
+	// }
+	// if len(daysIncoming) == 1 && daysIncoming[0] == -2 {
+
+	// }
+	// if len(daysIncoming) == 2 && daysIncoming[0] == -1 && daysIncoming[1] == -2 {
+
+	// }
 
 	for _, day := range daysInRule {
 		num, err := strconv.Atoi(day)
@@ -187,6 +216,7 @@ func ParseMRepeat(rule []string, now time.Time, date time.Time) (*MRepeat, error
 			// значения нормализуются во время преобразования
 			// Чтобы рассчитать количество дней текущего месяца (t), смотрим на день следующего месяца
 			t := Date(startdate.Year(), int(startdate.Month()+1), 0)
+			log.Printf("found month = %v:\n", t)
 			days = append(days, int(t.Day())-1)
 		} else {
 			return nil, fmt.Errorf("Error in checking days in repeat rule 'm', got '%s'", day)
@@ -224,6 +254,10 @@ func (mr *MRepeat) GetNextDate(now time.Time, date time.Time) (time.Time, error)
 	var nextDay time.Time
 
 	if !mr.hasMonths() {
+		// if len(mr.mDays) == 1 && startdate.Day() == mr.mDays[0] {
+		// 	// nextDay = startdate.AddDate(0, 0, day-int(startdate.Day()))
+		// 	// return nextDay, nil
+		// }
 		for _, day := range mr.mDays {
 			if day > int(startdate.Day()) {
 				nextDay = startdate.AddDate(0, 0, day-int(startdate.Day()))
@@ -232,6 +266,8 @@ func (mr *MRepeat) GetNextDate(now time.Time, date time.Time) (time.Time, error)
 				}
 				return nextDay, nil
 			}
+			// nextDay = startdate.AddDate(0, 0, day-int(startdate.Day()))
+			// return nextDay, nil
 		}
 
 		if nextDay == Date(0001, 1, 1) { // 0001-01-01 00:00:00 +0000 UTC нулевой вариант времени
@@ -356,5 +392,6 @@ func ParseRepeat(now time.Time, date time.Time, repeat string) (RepeatRule, erro
 		return nil, fmt.Errorf("Unkown repeat identifier %s", rule[0])
 	}
 
+	log.Println("parsedRepeat:", parsedRepeat)
 	return parsedRepeat, nil
 }
