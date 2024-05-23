@@ -33,7 +33,7 @@ const (
 )
 
 // repeatRulePattern checks if the reapeat rule starts with correct letter
-var repeatRulePattern *regexp.Regexp = regexp.MustCompile("^[dmwy].*")
+var repeatRulePattern *regexp.Regexp = regexp.MustCompile(`^([mwd]\s\S.*|y$)`)
 
 type signinRequest struct {
 	Password string `json:"password"`
