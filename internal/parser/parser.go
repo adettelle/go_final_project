@@ -242,6 +242,7 @@ func ParseMRepeat(rule []string, now time.Time, date time.Time) (*MRepeat, error
 // если номера месяцев указаны, то выбираются дни конкретных месяцев
 func (mr *MRepeat) GetNextDate(now time.Time, date time.Time) (time.Time, error) {
 	startdate := startDateForMWrule(now, date)
+	var zeroTime time.Time
 
 	sort.Ints(mr.mDays)
 	log.Println("mr.mDays:", mr.mDays)
@@ -267,11 +268,14 @@ func (mr *MRepeat) GetNextDate(now time.Time, date time.Time) (time.Time, error)
 			now = Date(2024, 2, 1)
 			log.Println("now:", now)
 			log.Println("date:", date)
-			mr, _ := ParseMRepeat(mr.initialRule, now, date) // ineffectual assignment to err (ineffassign)????
+			mr, err := ParseMRepeat(mr.initialRule, now, date) // ineffectual assignment to err (ineffassign)????
+			if err != nil {
+				return zeroTime, err
+			}
 			nextDay, err := mr.GetNextDate(now, date)
 			log.Println("nextDay:", nextDay)
 			if err != nil {
-				log.Println("error here", err)
+				return zeroTime, err
 			}
 			return nextDay, nil
 		}
