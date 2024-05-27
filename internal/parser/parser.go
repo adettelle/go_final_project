@@ -199,7 +199,7 @@ func ParseMRepeat(rule []string, now time.Time, date time.Time) (*MRepeat, error
 			// значения нормализуются во время преобразования
 			// Чтобы рассчитать количество дней текущего месяца (t), смотрим на день следующего месяца
 			lastDay = true
-			if hasMonths == false { // если нет месяцев в правиле, то мы берем месяц от startdate
+			if !hasMonths { // если нет месяцев в правиле, то мы берем месяц от startdate
 				t := Date(startdate.Year(), int(startdate.Month()+1), 0)
 				days = append(days, int(t.Day()))
 			} else { // иначе мы берем месяц от первого месяце в списке
@@ -212,7 +212,7 @@ func ParseMRepeat(rule []string, now time.Time, date time.Time) (*MRepeat, error
 			// значения нормализуются во время преобразования
 			// Чтобы рассчитать количество дней текущего месяца (t), смотрим на день следующего месяца
 			beforeLastDay = true
-			if hasMonths == false { // если нет месяцев в правиле, то мы берем месяц от startdate
+			if !hasMonths { // если нет месяцев в правиле, то мы берем месяц от startdate
 				t := Date(startdate.Year(), int(startdate.Month()+1), 0)
 				log.Printf("found month = %v:\n", t)
 				days = append(days, int(t.Day())-1)
@@ -250,6 +250,7 @@ func (mr *MRepeat) GetNextDate(now time.Time, date time.Time) (time.Time, error)
 	var nextDay time.Time
 
 	if !mr.hasMonths() {
+		log.Println("The rule has  no months")
 		for _, day := range mr.mDays {
 			if day > int(startdate.Day()) {
 				log.Println("we are in range mr.mDays")
@@ -266,7 +267,7 @@ func (mr *MRepeat) GetNextDate(now time.Time, date time.Time) (time.Time, error)
 			now = Date(2024, 2, 1)
 			log.Println("now:", now)
 			log.Println("date:", date)
-			mr, err := ParseMRepeat(mr.initialRule, now, date)
+			mr, _ := ParseMRepeat(mr.initialRule, now, date) // ineffectual assignment to err (ineffassign)????
 			nextDay, err := mr.GetNextDate(now, date)
 			log.Println("nextDay:", nextDay)
 			if err != nil {
@@ -276,17 +277,15 @@ func (mr *MRepeat) GetNextDate(now time.Time, date time.Time) (time.Time, error)
 		}
 	}
 
-	// if mr.hasMonths() {
-	// 	log.Println("We are in mr.hasMonths")
-	// 	log.Println("mr.mDays:", mr.mDays, "mr.mMonths:", mr.mMonths)
-	// 	if mr.lastDay || mr.beforeLastDay {
-	// 		// пересчитать дни для первого месяца в списке месяцев
-	// 	}
-	// 	sort.Ints(mr.mMonths)
+	if mr.hasMonths() {
+		log.Println("The rule has months")
+		log.Println("mr.mDays:", mr.mDays, "mr.mMonths:", mr.mMonths)
 
-	// 	nextDay = ruleMwithMonth(startdate, mr.mDays, mr.mMonths)
-	// 	return nextDay, nil
-	// }
+		sort.Ints(mr.mMonths)
+
+		nextDay = ruleMwithMonth(startdate, mr.mDays, mr.mMonths)
+		return nextDay, nil
+	}
 
 	return time.Time{}, fmt.Errorf("Error in checking days and months in 'm' repeat rule")
 }
